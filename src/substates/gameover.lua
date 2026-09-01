@@ -140,6 +140,31 @@ function gameover:playBlueBalledSFX()
     end
 end
 
+function gameover:exitToMenu()
+    if self.mustNotExit then return end
+    self.canInput = false
+    self.blueballed = false
+    self.mustNotExit = true
+
+    if self.gameOverMusic then self.gameOverMusic:stop() end
+    if self.deathQuoteSound then self.deathQuoteSound:stop() end
+
+    quitPressed = true
+
+    status.setLoading(true)
+    graphics:fadeOutWipe(0.7, function()
+        graphics.setFade(1)
+        Gamestate.pop()
+        if storyMode then
+            Gamestate.switch(menuWeek)
+        else
+            Gamestate.switch(menuFreeplay)
+        end
+
+        status.setLoading(false)
+    end)
+end
+
 function gameover:confirmDeath()
     if not self.isEnding then
         self.isEnding = true
@@ -155,7 +180,7 @@ function gameover:confirmDeath()
             boyfriend:play("deathConfirm" .. self.animationSuffix, true, false)
         end
 
-        local FADE_TIMER = (self.gameOverMusic:getDuration()*1000) / 7000
+        local FADE_TIMER = self.gameOverMusic and (self.gameOverMusic:getDuration() * 1000) / 7000 or 0.3
 
         Timer.after(FADE_TIMER, function()
             local function endShit()
@@ -182,6 +207,7 @@ function gameover:confirmDeath()
 
             if self.musicSuffix == "-pixel" then
                 graphics.fadeOut(2, function()
+                    print("Gameover fade out complete. But pixel!")
                     resetPlaying(true)
                 end)
             else
@@ -263,6 +289,8 @@ function gameover:update(dt)
             self.retryed = true
             self.blueballed = false
             self:confirmDeath()
+        elseif input:pressed("back") then
+            self:exitToMenu()
         end
     end
 

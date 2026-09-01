@@ -33,8 +33,8 @@ function love.conf(t)
 	t.console = _debug
 	t.window.vsync = 0
 
-	t.window.width = 1280
-	t.window.height = 720
+	t.window.width = 1920
+	t.window.height = 1080
 	
 	t.window.icon = "assets/icons/" .. icon .. ".png"
 

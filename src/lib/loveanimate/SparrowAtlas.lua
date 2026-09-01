@@ -490,7 +490,7 @@ end
 
 function SparrowAtlas:getMidpoint()
     local w, h = self:getFrameDimensions()
-    return w*3, h*1.25
+    return self.x + (w * self.scale.x) / 2, self.y + (h * self.scale.y) / 2
 end
 
 function SparrowAtlas:update(dt, emitSignals)

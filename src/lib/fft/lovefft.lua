@@ -70,14 +70,31 @@ function loveFFT:getPlayPosition() -- Why do you need this? Getting playback pos
 end
 
 function loveFFT:push() -- Launch a new FFT computation in a separate thread using self.playPosition. Set the position using self.updatePlayTime or self.setPlayPosition
-    local sample = self.playPosition * self.sampleRate
+    local soundData = self.soundData
+    local fftSize = self.fftSize
+    local channelCount = self.channelCount
+
+    -- Clamp the window to the decoded data once, rather than guarding every
+    -- individual getSample with a pcall.
+    local first = math.floor(self.playPosition * self.sampleRate)
+    if first < 0 then first = 0 end
+
+    local available = soundData:getSampleCount() - first
+    if available < 0 then available = 0 end
+    if available > fftSize then available = fftSize end
+
     local toFFT = {}
-    for i = 1, self.fftSize do
-        toFFT[i] = 0
-        for j = 1, self.channelCount do
-            util.tryExcept(function() toFFT[i] = toFFT[i] + self.soundData:getSample(sample + i - 1, j) end)
+    for i = 1, available do
+        local total = 0
+        for j = 1, channelCount do
+            total = total + soundData:getSample(first + i - 1, j)
         end
+        toFFT[i] = total
     end
+    for i = available + 1, fftSize do
+        toFFT[i] = 0
+    end
+
     -- Send to thread
     self.channelToFFT:push(toFFT)
 end

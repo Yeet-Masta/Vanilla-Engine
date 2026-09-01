@@ -90,7 +90,8 @@ function character.getCharacter(id)
                           data.cameraOffsets and data.cameraOffsets[2] or 0}
 
     char.healthIcon = data.healthIcon and data.healthIcon.id or char.id
-    if data.healthIcon and data.healthIcon.isPixel then
+    char.healthIconIsPixel = (data.healthIcon and data.healthIcon.isPixel) or false
+    if char.healthIconIsPixel then
         char.healthIconScale = 5
     end
     char.healthIconScale = (data.healthIcon and data.healthIcon.scale ~= nil) and data.healthIcon.scale or char.healthIconScale or 1
@@ -291,7 +292,7 @@ function character:dance(force)
             local currentAnimation = self.sprite.curAnim.name
             if not currentAnimation:startsWith("dance") and not currentAnimation:startsWith("idle") and not
                 currentAnimation:endsWith("-hold") and not self.sprite.animFinished
-            and not currentAnimation == "__raw__" then
+            and currentAnimation ~= "__raw__" then -- idk...
                 return
             end
         end

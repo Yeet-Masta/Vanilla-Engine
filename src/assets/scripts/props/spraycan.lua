@@ -1,42 +1,68 @@
 local spraycan = Object:extend()
 
+local STATE_WAITING = 1
 local STATE_ARCING = 2
 local STATE_SHOT = 3
 local STATE_IMPACTED = 4
---[[ local CURRENT_STATE = STATE_ARCING ]]
+
+-- The atlas' main timeline carries three labelled runs ("Can Start" 0-18,
+-- "Hit Pico" 19-25, "Can Shot" 26-42). They have to be registered as real
+-- animations: AnimateAtlas:play() only searches its animation list, so playing
+-- a bare frame label silently did nothing and the can sat frozen on frame 0.
+local CAN_ANIMATIONS = {
+    {name = "Can Start", label = "Can Start"},
+    {name = "Hit Pico",  label = "Hit Pico"},
+    {name = "Can Shot",  label = "Can Shot"},
+}
+
+-- Offsets of the explosion relative to the can's own origin.
+local EXPLOSION_OFFSET = {-25, -450}
 
 function spraycan:new(x, y)
-    suffix = suffix or ""
     self.sprite = graphics.newTextureAtlas()
     self.assetPath = "weekend1/images/spraycanAtlas"
 
-    self.sprite:load("" .. self.assetPath)
+    self.sprite:load(self.assetPath)
 
-    self.sprite.scale.x = 0.4
-    self.sprite.scale.y = 0.4
+    for _, anim in ipairs(CAN_ANIMATIONS) do
+        self.sprite:addAnimByFrameLabel(anim.name, anim.label, 24, false)
+    end
+
     self.sprite:updateHitbox()
 
     self.sprite.onAnimationFinished:connect(function(name)
         if name == "Can Start" then
             self:playHitPico()
         elseif name == "Can Shot" then
-            self.visible = false
+            self.canVisible = false
+            self.currentState = STATE_WAITING
         elseif name == "Hit Pico" then
             self:playHitExplosion()
-            self.visible = false
+            self.canVisible = false
+            self.currentState = STATE_WAITING
         end
     end)
 
-    self.x = x
-    self.y = y
-    self.sprite.x = x
-    self.sprite.y = y
+    self.explosion = graphics.newSparrowAtlas()
+    self.explosion:load(EXTEND_LIBRARY("weekend1:spraypaintExplosionEZ"))
+    self.explosion:addAnimByPrefix("idle", "explosion round 1 short0", 24, false)
+    self.explosion.visible = false
+    self.explosion.onAnimationFinished:connect(function()
+        self.explosion.visible = false
+    end)
+
+    self.x = x or 0
+    self.y = y or 0
+    self.sprite.x = self.x
+    self.sprite.y = self.y
     self.scroll = {x = 1, y = 1}
     self.offsets = {0, 0}
     self.angle = 0
     self.visible = true
 
-    self.currentState = STATE_ARCING
+    -- The can only becomes visible once Darnell actually kicks it up.
+    self.canVisible = false
+    self.currentState = STATE_WAITING
 end
 
 function spraycan:update(dt)
@@ -46,34 +72,46 @@ function spraycan:update(dt)
     self.sprite.flipY = self.flipY
     self.sprite.angle = self.angle
     self.sprite.scroll = self.scroll
-    self.sprite.visible = self.visible
+    self.sprite.visible = self.visible and self.canVisible
+
+    self.explosion.x = self.x + self.offsets[1] + EXPLOSION_OFFSET[1]
+    self.explosion.y = self.y + self.offsets[2] + EXPLOSION_OFFSET[2]
+    self.explosion.scroll = self.scroll
 
     self.sprite:update(dt)
+    self.explosion:update(dt)
+end
+
+function spraycan:draw(camera)
+    if not self.visible then return end
+    if self.canVisible then
+        self.sprite:draw(camera)
+    end
+    if self.explosion.visible then
+        self.explosion:draw(camera)
+    end
 end
 
 function spraycan:playHitExplosion()
-    local explodeEZ = graphics.newSparrowAtlas()
-    explodeEZ:load("weekend1/images/spraypaionExplosionEZ")
-    explodeEZ.x, explodeEZ.y = self.x + 1050, self.y + 150
-    explodeEZ:addAnimByPrefix("idle", "explosion round 1 short0", 24, false)
-    explodeEZ:play("idle")
-
-    weeks:add(explodeEZ)
-    explodeEZ.onAnimationFinished:connect(function()
-        explodeEZ.visible = false
-    end)
+    self.explosion.visible = true
+    self.explosion:play("idle", true, false)
 end
 
 function spraycan:playCanStart()
-    self.sprite:play("Can Start")
+    self.canVisible = true
+    self.currentState = STATE_ARCING
+    self.sprite:play("Can Start", true, false)
 end
 
 function spraycan:playCanShot()
-    self.sprite:play("Can Shot")
+    self.canVisible = true
+    self.currentState = STATE_SHOT
+    self.sprite:play("Can Shot", true, false)
 end
 
 function spraycan:playHitPico()
-    self.sprite:play("Hit Pico")
+    self.currentState = STATE_IMPACTED
+    self.sprite:play("Hit Pico", true, false)
 end
 
 return spraycan

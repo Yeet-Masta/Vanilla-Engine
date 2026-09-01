@@ -364,6 +364,13 @@ function stage:build()
             prop.scale.x = propitem.scale and propitem.scale[1] or 1
             prop.scale.y = propitem.scale and propitem.scale[2] or 1
         end
+        if _type(propitem.scroll) == "number" then
+            prop.scroll.x = propitem.scroll
+            prop.scroll.y = propitem.scroll
+        else
+            prop.scroll.x = propitem.scroll and propitem.scroll[1] or 1
+            prop.scroll.y = propitem.scroll and propitem.scroll[2] or 1
+        end
         prop.alpha = propitem.alpha or 1
         prop.zIndex = propitem.zIndex
         prop.name = propitem.name

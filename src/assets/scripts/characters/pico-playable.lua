@@ -1,11 +1,13 @@
 local deathSpriteNene, deathSpriteRetry
 local picoDeathExplosion
+local singed
+local picoFlickerTimers = {}
 
 local sounds = {}
 
 function Character:onCreate()
     gameoverSubstate.musicSuffix = "-pico"
-    gameoverSubstate.blueBallSuffix = "-pico-explode"
+    gameoverSubstate.blueBallSuffix = "-pico"
 
     local imagesToCache = {
         "shared:characters/Pico_Death_Retry",
@@ -16,7 +18,7 @@ function Character:onCreate()
 
     for _, imgPath in ipairs(imagesToCache) do
         local path = EXTEND_LIBRARY(imgPath)
-        if imgPath:startsWith("weekend1:") and weeks.metadata.level ~= "weekend1" then
+        if imgPath:startsWith("weekend1:") and weeks._weekID ~= "weekend1" then
             goto continue
         end
 
@@ -25,10 +27,16 @@ function Character:onCreate()
         ::continue::
     end
 
-    if weeks.metadata.level == "weekend1" then
+    if weeks._weekID == "weekend1" then
         for _, snd in ipairs({"singed_loop", "Gun_Prep", "Pico_Bonk", "shot1", "shot2", "shot3", "shot4"}) do
             sounds[snd] = love.audio.newSource("weekend1/sounds/" .. snd .. ".ogg", "static")
         end
+
+        -- Pre-warm the explosion atlas so its symbol/registration data is
+        -- parsed and cached now, not on the first actual death (which was
+        -- causing the sprite to be invisible/mispositioned only the first time).
+        local warmupExplosionAtlas = graphics.newTextureAtlas()
+        warmupExplosionAtlas:load("weekend1/images/characters/picoExplosionDeath")
     end
 end
 
@@ -78,6 +86,9 @@ function Character:createDeathSprites()
     deathSpriteRetry:addAnimByPrefix("idle", "Retry Text Loop0", 24, true)
     deathSpriteRetry:addAnimByPrefix("confirm", "Retry Text Confirm0", 24, false)
 
+    deathSpriteRetry.x = self.data.x + 100
+    deathSpriteRetry.y = self.data.y + 100
+
     deathSpriteRetry.zIndex = self.data.zIndex + 5
     deathSpriteRetry.visible = false
 
@@ -98,8 +109,11 @@ function Character:onSongRetry()
     gameoverSubstate.musicSuffix = "-pico"
     gameoverSubstate.blueBallSuffix = "-pico"
 
-    picoDeathExplosion = false
-    self.data.visible = true
+    picoDeathExplosion = nil
+    if singed then
+        singed:stop()
+    end
+    self:cancelMissFlicker()
 end
 
 local function randomFloat(min, max)
@@ -152,6 +166,7 @@ function Character:onAnimationFrame(name, frameNumber, _)
     if name == "firstDeath" and frameNumber == 36 then
         if deathSpriteRetry ~= nil then
             deathSpriteRetry:play("idle", true, true)
+            deathSpriteRetry:updateHitbox()
             deathSpriteRetry.visible = true
 
             deathSpriteRetry.x = self.data.x + 170
@@ -174,13 +189,41 @@ function Character:onAnimationFrame(name, frameNumber, _)
 end
 
 function Character:onAnimationFinished(name)
-    if name == "shootMISS" and health > 0 and not dying then
-        -- fuiasfhsdhb
+    if name == "shootMISS" and weeks:getHealth() > 0 and not self.data.isDead then
+        self:startMissFlicker()
     end
 end
 
-local picoDeathExplosion
+-- Pico flickers after eating a can: 30 flips at 1/30s, then 30 more at 1/60s.
+function Character:startMissFlicker()
+    self:cancelMissFlicker()
+
+    local function flip()
+        self.data.visible = not self.data.visible
+    end
+
+    table.insert(picoFlickerTimers, Timer.every(1 / 30, flip, 30))
+    table.insert(picoFlickerTimers, Timer.after(30 / 30, function()
+        self.data.visible = true
+        table.insert(picoFlickerTimers, Timer.every(1 / 60, flip, 30))
+        table.insert(picoFlickerTimers, Timer.after(30 / 60, function()
+            self.data.visible = true
+        end))
+    end))
+end
+
+-- Every handle has to be tracked: a death landing mid-flicker would otherwise
+-- leave a pending timer to flip Pico back into view over the explosion.
+function Character:cancelMissFlicker()
+    for i = #picoFlickerTimers, 1, -1 do
+        Timer.cancel(picoFlickerTimers[i])
+        picoFlickerTimers[i] = nil
+    end
+    self.data.visible = true
+end
+
 function Character:doExplosionDeath()
+    self:cancelMissFlicker()
     hapticUtil:vibrate(0, 0.5)
 
     Timer.after(1.85, function()
@@ -189,8 +232,8 @@ function Character:doExplosionDeath()
 
     picoDeathExplosion = graphics.newTextureAtlas()
     picoDeathExplosion:load("weekend1/images/characters/picoExplosionDeath")
-    picoDeathExplosion.x = self.data.x - 1100
-    picoDeathExplosion.y = self.data.y - 1000
+    picoDeathExplosion.x = self.data.x - 250
+    picoDeathExplosion.y = self.data.y - 250
     picoDeathExplosion.zIndex = 1000
     picoDeathExplosion.onAnimationFinished:connect(function(n)
         self:onExplosionFinishAnim(n)
@@ -198,8 +241,8 @@ function Character:doExplosionDeath()
     picoDeathExplosion.visible = true
     self.data.visible = false
 
-    weeks:add(picoDeathExplosion)
-    weeks:sort()
+    gameoverSubstate:add(picoDeathExplosion)
+    gameoverSubstate:sort()
 
     Timer.after(3, function()
         self:afterPicoDeathExplosionIntro()
@@ -208,11 +251,12 @@ function Character:doExplosionDeath()
     picoDeathExplosion:play("intro", true, false)
 end
 
-local singed
-
 function Character:afterPicoDeathExplosionIntro(tmr)
     gameoverSubstate:startDeathMusic(1, false)
-    signed = singed or love.audio.newSource("weekend1/sounds/singed_loop.ogg", "static")
+
+    singed = singed or love.audio.newSource("weekend1/sounds/singed_loop.ogg", "static")
+    singed:setLooping(true)
+    singed:play()
 end
 
 function Character:doExplosionConfirm()

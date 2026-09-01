@@ -75,21 +75,35 @@ end
 
 Conductor.setBPM = Conductor.changeBPM
 
+-- Called every frame from updateCurStep. The old version allocated a fresh
+-- table and linear-scanned the whole map on each call; this reuses one table
+-- and keeps a cursor, since lookups walk forward through the song.
 function Conductor:getBPMFromSeconds(time)
-    local lastChange = {
-        stepTime = 0,
-        songTime = 0,
-        bpm = self.bpm,
-        stepCrotchet = self.stepCrotchet
-    }
+    local fallback = self._defaultChange
+    if not fallback then
+        fallback = {stepTime = 0, songTime = 0, bpm = self.bpm, stepCrotchet = self.stepCrotchet}
+        self._defaultChange = fallback
+    end
+    fallback.bpm = self.bpm
+    fallback.stepCrotchet = self.stepCrotchet
 
-    for _, change in ipairs(self.bpmChangeMap) do
-        if time >= change.songTime then
-            lastChange = change
-        end
+    local map = self.bpmChangeMap
+    local n = #map
+    if n == 0 then return fallback end
+
+    local i = self._bpmCursor or 0
+
+    -- Seeking backwards (rewind / restart) is rare, so just reset the cursor.
+    if i > 0 and map[i] and time < map[i].songTime then
+        i = 0
     end
 
-    return lastChange
+    while i < n and time >= map[i + 1].songTime do
+        i = i + 1
+    end
+
+    self._bpmCursor = i
+    return i > 0 and map[i] or fallback
 end
 
 function Conductor:getBPMFromStep(step)
@@ -136,6 +150,7 @@ end
 
 function Conductor:mapBPMChangesLegacy(song)
     self.bpmChangeMap = {}
+    self._bpmCursor = 0
 
     local curBPM = song.bpm
     local totalSteps = 0
@@ -160,6 +175,7 @@ end
 
 function Conductor:mapBPMChanges(meta)
     self.bpmChangeMap = {}
+    self._bpmCursor = 0
     local totalSteps = 0
 
     for _, bpmChange in ipairs(meta.timeChanges) do
@@ -189,9 +205,7 @@ function Conductor:update(dt, localMusicTime)
     self:updateBeat()
 
     if oldStep ~= self.curStep then
-        if self.curStep > 0 then
-            self:stepHit()
-        end
+        self:stepHit()
 
         if weeks.SONG then
             if oldStep < self.curStep then
@@ -221,22 +235,26 @@ function Conductor:getSectionBeats(song, section)
     return song.notes[section].sectionBeats or 4
 end
 
-function Conductor:getBeatsOnSection()
-    if weeks.SONG and weeks.SONG.notes[self.curSection] then
-        return weeks.SONG.notes[self.curSection].sectionBeats or 4
+-- `section` is 1-based into SONG.notes. curSection counts from 0, so callers
+-- must pass curSection + 1; the old version indexed notes[0] and silently
+-- fell back to 4 beats for every section.
+function Conductor:getBeatsOnSection(section)
+    section = section or (self.curSection + 1)
+    if weeks.SONG and weeks.SONG.notes and weeks.SONG.notes[section] then
+        return weeks.SONG.notes[section].sectionBeats or 4
     end
     return 4
 end
 
 function Conductor:updateSection()
     if self.stepsToDo < 1 then
-        self.stepsToDo = math.floor(self:getBeatsOnSection() * 4)
+        self.stepsToDo = math.floor(self:getBeatsOnSection(self.curSection + 1) * 4)
     end
 
     while self.curStep >= self.stepsToDo do
         self.curSection = self.curSection + 1
-        local beats = self:getBeatsOnSection()
-        self.stepsToDo = self.stepsToDo + math.floor(beats * 4)
+        self.stepsToDo = self.stepsToDo
+            + math.floor(self:getBeatsOnSection(self.curSection + 1) * 4)
         self:sectionHit()
     end
 end
@@ -249,7 +267,9 @@ function Conductor:rollbackSection()
     self.stepsToDo = 0
 
     for i = 1, #weeks.SONG.notes do
-        self.stepsToDo = self.stepsToDo + math.floor(self:getBeatsOnSection() * 4)
+        -- was getBeatsOnSection() with no argument, which re-read the same
+        -- section every iteration instead of walking the chart.
+        self.stepsToDo = self.stepsToDo + math.floor(self:getBeatsOnSection(i) * 4)
         if self.stepsToDo > self.curStep then break end
         self.curSection = self.curSection + 1
     end

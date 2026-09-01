@@ -520,9 +520,20 @@ function Sprite:draw(batch)
         if type(self.color) == "number" then self.color = hex2rgb(self.color) end
         love.graphics.setColor(self.color[1], self.color[2], self.color[3], self.alpha)
 
+        -- setFilter is a texture state change and flushes the pending draw
+        -- batch, so only touch it when the mode actually differs from what's
+        -- already set. Filter is restored below either way it goes, exactly
+        -- like the original code, since this texture may be shared with
+        -- something that depends on a specific filter persisting between
+        -- draws (Icon.lua forces "nearest" on some images; graphics.lua's
+        -- antialiasing toggle sets a whole atlas at once) -- this sprite's
+        -- draw call should only ever touch the filter for its own duration.
         local min, mag, anisotropy = self.tex:getFilter()
         local mode = self.antialiasing and "linear" or "nearest"
-        self.tex:setFilter(mode, mode, anisotropy)
+        local filterChanged = min ~= mode
+        if filterChanged then
+            self.tex:setFilter(mode, mode, anisotropy)
+        end
 
         if cam then cam:attach() end
 
@@ -575,7 +586,9 @@ function Sprite:draw(batch)
 
         love.graphics.setColor(1,1,1)
 
-        self.tex:setFilter(min, mag, anisotropy)
+        if filterChanged then
+            self.tex:setFilter(min, mag, anisotropy)
+        end
     end
 end
 

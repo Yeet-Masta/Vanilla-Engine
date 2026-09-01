@@ -3,6 +3,8 @@ local PUPIL_STATE_LEFT = 1
 
 local pupilState = PUPIL_STATE_NORMAL
 
+local AbotVisualizer = require("assets.scripts.props.abotVisualizer")
+
 local abot, abotViz, stereoBG, eyeWhites, pupil
 
 local VULTURE_THRESHOLD = 0.25 * 2
@@ -58,32 +60,58 @@ function Character:postCreate()
     pupil.y = self.data.y
     pupil.zIndex = self.data.zIndex - 5
     pupil:playSymbol("", true, false, 18)
-    pupil.onFrameChange:connect(function(_, frameNumber, _)
-        if frameNumber == 17 then
-            pupil:pause()
-        end
-    end)
-    pupil.onAnimationFinished:connect(function(name)
-        pupil:pause()
-    end)
 
     abot = graphics.newTextureAtlas()
     abot:load(EXTEND_LIBRARY("shared:characters/abot/abotSystem", true))
 
     abot:playSymbol("", true, false, 1)
+
+    -- Built here rather than in the update refresh so the instrumental decode
+    -- lands inside the loading screen instead of hitching the first frame.
+    abotViz = AbotVisualizer()
+    abotViz:attach(weeks.instPath)
+end
+
+function Character:movePupilsLeft()
+    if pupil then pupil:playSymbol("", true, false, 0) end
+end
+
+function Character:movePupilsRight()
+    if pupil then pupil:playSymbol("", true, false, 17) end
 end
 
 function Character:onSongEvent(event)
-    if event.name == "FocusCamera" then
-        local char = tonumber(event.value.char or "0") or 0
-        if char == 0 and pupilState ~= PUPIL_STATE_NORMAL then
-            pupil:playSymbol("", true, false, 17) -- look right
-            pupilState = PUPIL_STATE_NORMAL
-        elseif char == 1 and pupilState ~= PUPIL_STATE_LEFT then
-            pupil:playSymbol("", true, false, 0) -- look left
-            pupilState = PUPIL_STATE_LEFT
-        end
+    if event.name ~= "FocusCamera" then return end
+
+    local char
+    if type(event.value) == "table" then
+        char = tonumber(event.value.char) or 0
+    else
+        char = tonumber(event.value) or 0
     end
+
+    if char == 0 then
+        self:movePupilsRight()
+    elseif char == 1 then
+        self:movePupilsLeft()
+    end
+end
+
+-- A-Bot looks towards whatever is happening on stage.
+function Character:moveByNoteKind(kind)
+    if kind == "weekend-1-lightcan" then
+        self:movePupilsLeft()
+    elseif kind == "weekend-1-cockgun" then
+        self:movePupilsRight()
+    end
+end
+
+function Character:onNoteHit(event)
+    self:moveByNoteKind(event.noteType)
+end
+
+function Character:onNoteMiss(event)
+    self:moveByNoteKind(event.noteType)
 end
 
 function Character:dance(force)
@@ -116,6 +144,29 @@ function Character:dance(force)
 end
 
 function Character:onUpdate(dt)
+    if abot then
+        local visible = self.data.visible
+        abot.visible = visible
+        pupil.visible = visible
+        eyeWhites.visible = visible
+        stereoBG.visible = visible
+        if abotViz then abotViz.visible = visible end
+    end
+
+    if pupil and pupil.playing then
+        if pupilState == PUPIL_STATE_NORMAL then
+            if pupil.frame >= 17 then
+                pupilState = PUPIL_STATE_LEFT
+                pupil:pause()
+            end
+        elseif pupilState == PUPIL_STATE_LEFT then
+            if pupil.frame >= 30 then
+                pupilState = PUPIL_STATE_NORMAL
+                pupil:pause()
+            end
+        end
+    end
+
     if self:shouldTransitionState() then
         self:transitionState()
     end
@@ -126,7 +177,17 @@ function Character:onUpdate(dt)
         abot.zIndex = self.data.zIndex - 10
         weeks:add(abot)
 
-        -- abotViz
+        -- A-Bot's screen is a transparent hole in the art, measured at
+        -- abot + (190..621, 48..299), i.e. 431x251. With BAR_SPACING 57 the run
+        -- of bars is 6*57 + 68 = 410 wide, so starting bar 1's box at +200 sits
+        -- it centred with ~10px either side. The reference's +207 assumed its
+        -- own sprite's registration and pushed the bars off the right edge.
+        -- The +84 is unchanged: it already lands the bar bottoms on the screen's
+        -- bottom edge, which is what gives them their curved baseline.
+        abotViz.x = abot.x + 144
+        abotViz.y = abot.y + 78
+        abotViz.zIndex = abot.zIndex - 1
+        weeks:add(abotViz)
 
         eyeWhites.x = abot.x + 40
         eyeWhites.y = abot.y + 250
@@ -140,10 +201,11 @@ function Character:onUpdate(dt)
 
         stereoBG.x = abot.x + 150
         stereoBG.y = abot.y + 30
-        stereoBG.zIndex = eyeWhites.zIndex - 8
+        stereoBG.zIndex = abot.zIndex - 8
         weeks:add(stereoBG)
 
         abot.shader = self.data.shader
+        abotViz.shader = self.data.shader
         eyeWhites.shader = self.data.shader
         pupil.shader = self.data.shader
         stereoBG.shader = self.data.shader
@@ -163,6 +225,7 @@ end
 function Character:onAnimationFinished(name)
     if state == STATE_RAISE or state == STATE_LOWER or state == STATE_HAIR_BLOWING or state == STATE_HAIR_FALLING or state == STATE_HAIR_BLOWING_RAISE or state == STATE_HAIR_FALLING_RAISE then
         animationFinished = true
+        self:transitionState()
     end
 end
 
@@ -184,21 +247,21 @@ function Character:checkTrainPassing(raised)
         animationFinished = false
     else
         state = STATE_HAIR_BLOWING
-        self.data:play("hairBlow", true, false)
+        self.data:play("hairBlowNormal", true, false)
         animationFinished = false
     end
 end
 
 function Character:transitionState()
     if state == STATE_DEFAULT then
-        if health <= VULTURE_THRESHOLD then
+        if weeks:getHealth() <= VULTURE_THRESHOLD then
             state = STATE_PRE_RAISE
         else
             state = STATE_DEFAULT
         end
         self:checkTrainPassing()
     elseif state == STATE_PRE_RAISE then
-        if health > VULTURE_THRESHOLD then
+        if weeks:getHealth() > VULTURE_THRESHOLD then
             state = STATE_DEFAULT
         elseif animationFinished then
             state = STATE_RAISE
@@ -213,7 +276,7 @@ function Character:transitionState()
         end
         self:checkTrainPassing(true)
     elseif state == STATE_READY then
-        if health > VULTURE_THRESHOLD then
+        if weeks:getHealth() > VULTURE_THRESHOLD then
             state = STATE_LOWER
         end
         self:checkTrainPassing(true)
@@ -253,5 +316,11 @@ function Character:transitionState()
         end
     else
         state = STATE_DEFAULT
+    end
+end
+
+function Character:onSongEnd(event)
+    if abotViz then
+        abotViz:detach()
     end
 end

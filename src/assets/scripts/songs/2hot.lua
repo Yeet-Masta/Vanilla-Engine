@@ -1,50 +1,107 @@
 local gunCocked = false
+local gunCockedTimer = nil
 local spawnedCans = {}
 
 local spraycan = require("assets.scripts.props.spraycan")
 
+-- Matches the reference stage: the can is kicked up from the pile and arcs in
+-- from its right-hand side.
+local CAN_SPAWN_OFFSET = {530, -240}
+
+local STATE_WAITING = 1
+local STATE_ARCING = 2
+local STATE_SHOT = 3
+local STATE_IMPACTED = 4
+
+function Song:onCreate()
+    gunCocked = false
+    if gunCockedTimer then
+        Timer.cancel(gunCockedTimer)
+        gunCockedTimer = nil
+    end
+    self:clearCans()
+    self:resetStageColor()
+end
+
+function Song:onSongRetry()
+    self:onCreate()
+end
+
+function Song:clearCans()
+    for i = #spawnedCans, 1, -1 do
+        remove(spawnedCans[i])
+        spawnedCans[i] = nil
+    end
+end
+
 function Song:onNoteHit(event)
     if event.noteType == "weekend-1-lightcan" then
-    elseif event.noteType == "weekened-1-kickcan" then
-        local newCan = spraycan()
-        local sprayCanPile = get("spraycanPile")
-
-        newCan.x = sprayCanPile.x + 30
-        newCan.y = sprayCanPile.y - 840
-        newCan.zIndex = sprayCanPile.zIndex - 1
-
-        add(newCan)
-        weeks:sort()
-        table.insert(spawnedCans, newCan)
+    elseif event.noteType == "weekend-1-kickcan" then
+        self:spawnCan()
     elseif event.noteType == "weekend-1-kneecan" then
     elseif event.noteType == "weekend-1-cockgun" then
         gunCocked = true
-        Timer.after(1, function()
+        if gunCockedTimer then Timer.cancel(gunCockedTimer) end
+        gunCockedTimer = Timer.after(1, function()
             gunCocked = false
+            gunCockedTimer = nil
         end)
-    elseif event.noteType == "weekend-1-firegun" then
+    elseif event.noteType == "weekend-1-firegun"
+        or event.noteType == "weekend-1-firegun-hip"
+        or event.noteType == "weekend-1-firegun-far" then
         if gunCocked then
             self:shootNextCan()
         end
     end
 end
 
-local STATE_ARCING = 2
-local STATE_SHOT = 3
-local STATE_IMPACTED = 4
+function Song:spawnCan()
+    local sprayCanPile = get("spraycanPile")
+    if not sprayCanPile then return end
+
+    local newCan = spraycan(
+        sprayCanPile.x + CAN_SPAWN_OFFSET[1],
+        sprayCanPile.y + CAN_SPAWN_OFFSET[2]
+    )
+    -- Draw above the pile so the arc and the explosion aren't hidden by it.
+    newCan.zIndex = sprayCanPile.zIndex + 1
+
+    add(newCan)
+    weeks:sort()
+    table.insert(spawnedCans, newCan)
+
+    -- Without this the can never leaves frame 0 of its atlas.
+    newCan:playCanStart()
+end
 
 function Song:getNextCanWithState(desiredState)
     for i = 1, #spawnedCans do
         local can = spawnedCans[i]
-        local canState = can.currentState
 
-        if canState == desiredState then
+        if can.currentState == desiredState then
             return can
         end
     end
 end
 
 local globalColor = {1, 1, 1}
+local blackout = false
+
+function Song:resetStageColor()
+    globalColor[1], globalColor[2], globalColor[3] = 1, 1, 1
+
+    if blackout then
+        -- Characters are skipped by the per-frame colour pass, so the ones the
+        -- blackout dimmed have to be put back by hand or they stay black.
+        blackout = false
+        for _, prop in ipairs(weeks:getProps()) do
+            if prop.characterType and prop.color then
+                prop.color[1], prop.color[2], prop.color[3] = 1, 1, 1
+            end
+        end
+    end
+end
+
 function Song:darkenStageProps()
     globalColor[1] = 17/255
     globalColor[2] = 17/255
@@ -60,38 +117,37 @@ function Song:darkenStageProps()
 end
 
 function Song:blackenStageProps()
+    blackout = true
     globalColor[1] = 0
     globalColor[2] = 0
     globalColor[3] = 0
 
     Timer.after(1, function()
-        globalColor[1] = 1
-        globalColor[2] = 1
-        globalColor[3] = 1
+        self:resetStageColor()
     end)
+end
+
+-- Characters keep their own colour during the muzzle-flash darkening. The
+-- blackout on death is the exception: everything goes dark except Pico, so he
+-- reads as a silhouette.
+function Song:isDarkenable(prop)
+    if table.includes(spawnedCans, prop) then return false end
+
+    if prop.characterType then
+        return blackout and prop.characterType ~= CHARACTER_TYPE.BF
+    end
+
+    return true
 end
 
 function Song:onUpdate(dt)
     for _, prop in ipairs(weeks:getProps()) do
-        if not prop.name then goto continue end
-        if globalColor[1] == 0 then
-            if prop.name == "bf" then goto continue end
-        else
-            if prop.name == "bf" or prop.name == "enemy" or prop.name == "gf" then goto continue end
+        if self:isDarkenable(prop) then
+            prop.color = prop.color or {1, 1, 1}
+            prop.color[1] = globalColor[1]
+            prop.color[2] = globalColor[2]
+            prop.color[3] = globalColor[3]
         end
-
-        if table.includes(spawnedCans, prop) then goto continue end
-
-        if prop.zIndex == (getBoyfriend().zIndex - 3) then
-            goto continue
-        end
-
-        prop.color = prop.color or {1, 1, 1}
-        prop.color[1] = globalColor[1]
-        prop.color[2] = globalColor[2]
-        prop.color[3] = globalColor[3]
-
-        ::continue::
     end
 end
 
@@ -106,9 +162,8 @@ function Song:shootNextCan()
     local can = self:getNextCanWithState(STATE_ARCING)
 
     if can then
-        can.currentState = STATE_SHOT
         can:playCanShot()
-    
+
         Timer.after(1/24, function()
             self:darkenStageProps()
 
@@ -124,26 +179,16 @@ function Song:missNextCan()
     end
 end
 
-function Song:spawnImpactParticle()
-
-end
-
 function Song:onNoteMiss(event)
     if event.noteType == "weekend-1-cockgun" then
         event.healthChange = 0
-    elseif event.noteType == "weekend-1-firegun" then
+    elseif event.noteType == "weekend-1-firegun"
+        or event.noteType == "weekend-1-firegun-hip"
+        or event.noteType == "weekend-1-firegun-far" then
         gunCocked = false
+        -- The can itself deals the damage in takeCanDamage(), so the note must
+        -- not also charge the usual miss penalty.
         event.healthChange = 0
-        self:missNextCan()
-        self:takeCanDamage()
-    elseif event.noteType == "weekend-1-firegun-hip" then
-        gunCocked = false
-        event.healthChange = 0
-        self:missNextCan()
-        self:takeCanDamage()
-    elseif event.noteType == "weekend-1-firegun-far" then
-        gunCocked = false
-        event.healtHChange = 0
         self:missNextCan()
         self:takeCanDamage()
     end
@@ -152,9 +197,9 @@ end
 local HEALTH_LOSS = 0.25 * 2
 
 function Song:takeCanDamage()
-    health = health - HEALTH_LOSS
+    weeks.health = weeks.health - HEALTH_LOSS
 
-    if health <= 0 then
+    if weeks.health <= 0 then
         gameoverSubstate.musicSuffix = "-pico-explode"
         gameoverSubstate.blueBallSuffix = "-pico-explode"
 

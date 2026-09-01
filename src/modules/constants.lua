@@ -206,7 +206,7 @@ CONSTANTS.WEEKS = {
         love.graphics.newShader("shaders/RGBPallette.glsl"),
         love.graphics.newShader("shaders/RGBPallette.glsl"),
         love.graphics.newShader("shaders/RGBPallette.glsl")
-    }
+    } --WTF does this do!?!
 }
 
 CONSTANTS.MISC = {

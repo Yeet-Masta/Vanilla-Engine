@@ -3,7 +3,7 @@ return graphics.newSprite(
 		-- Automatically generated from holdCovers.xml
 	{
 		{x = 1038, y = 0, width = 97, height = 95, offsetX = -109, offsetY = -106, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 1: holdCoverStartBlue0000
-		{x = 867, y = 491, width = 100, height = 134, offsetX = -98, offsetY = -96, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 2: holdCoverBlue0000
+		{x = 867, y = 491, width = 100, height = 134, offsetX = -98, offsetY = -96, offsetWidth = 300, offsetHeight = 400, rotated = true}, -- 2: holdCoverBlue0000
 		{x = 802, y = 816, width = 118, height = 92, offsetX = -101, offsetY = -106, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 3: holdCoverBlue0001
 		{x = 1038, y = 629, width = 97, height = 82, offsetX = -113, offsetY = -106, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 4: holdCoverBlue0002
 		{x = 1077, y = 792, width = 39, height = 80, offsetX = -120, offsetY = -132, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 5: holdCoverBlue0003
@@ -18,7 +18,7 @@ return graphics.newSprite(
 		{x = 867, y = 246, width = 169, height = 245, offsetX = -52, offsetY = -111, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 13: holdCoverEndBlue0007
 
 		{x = 1038, y = 190, width = 97, height = 95, offsetX = -109, offsetY = -106, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 14: holdCoverStartGreen0000
-		{x = 450, y = 816, width = 108, height = 140, offsetX = -93, offsetY = -94, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 15: holdCoverGreen0000
+		{x = 450, y = 816, width = 108, height = 140, offsetX = -93, offsetY = -94, offsetWidth = 300, offsetHeight = 400, rotated = true}, -- 15: holdCoverGreen0000
 		{x = 558, y = 816, width = 122, height = 98, offsetX = -99, offsetY = -103, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 16: holdCoverGreen0001
 		{x = 1038, y = 380, width = 97, height = 83, offsetX = -113, offsetY = -106, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 17: holdCoverGreen0002
 		{x = 1077, y = 711, width = 39, height = 81, offsetX = -120, offsetY = -131, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 18: holdCoverGreen0003
@@ -33,7 +33,7 @@ return graphics.newSprite(
 		{x = 696, y = 0, width = 171, height = 246, offsetX = -50, offsetY = -112, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 26: holdCoverEndGreen0007
 
 		{x = 1038, y = 95, width = 97, height = 95, offsetX = -109, offsetY = -106, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 27: holdCoverStartPurple0000
-		{x = 500, y = 234, width = 108, height = 140, offsetX = -93, offsetY = -94, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 28: holdCoverPurple0000
+		{x = 500, y = 234, width = 108, height = 140, offsetX = -93, offsetY = -94, offsetWidth = 300, offsetHeight = 400, rotated = true}, -- 28: holdCoverPurple0000
 		{x = 696, y = 492, width = 122, height = 98, offsetX = -99, offsetY = -103, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 29: holdCoverPurple0001
 		{x = 1038, y = 546, width = 97, height = 83, offsetX = -113, offsetY = -106, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 30: holdCoverPurple0002
 		{x = 1038, y = 711, width = 39, height = 81, offsetX = -120, offsetY = -131, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 31: holdCoverPurple0003
@@ -48,7 +48,7 @@ return graphics.newSprite(
 		{x = 867, y = 0, width = 171, height = 246, offsetX = -50, offsetY = -112, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 39: holdCoverEndPurple0007
 
 		{x = 1038, y = 285, width = 97, height = 95, offsetX = -109, offsetY = -106, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 40: holdCoverStartRed0000
-		{x = 588, y = 394, width = 108, height = 140, offsetX = -93, offsetY = -94, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 41: holdCoverRed0000
+		{x = 588, y = 394, width = 108, height = 140, offsetX = -93, offsetY = -94, offsetWidth = 300, offsetHeight = 400, rotated = true}, -- 41: holdCoverRed0000
 		{x = 680, y = 816, width = 122, height = 98, offsetX = -99, offsetY = -103, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 42: holdCoverRed0001
 		{x = 1038, y = 463, width = 97, height = 83, offsetX = -113, offsetY = -106, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 43: holdCoverRed0002
 		{x = 1038, y = 792, width = 39, height = 81, offsetX = -120, offsetY = -131, offsetWidth = 300, offsetHeight = 400, rotated = false}, -- 44: holdCoverRed0003

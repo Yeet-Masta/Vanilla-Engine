@@ -977,6 +977,9 @@ function AnimateAtlas:drawTimeline(timeline, frame, matrix, colorTransform)
         end
     end
 
+    -- Computed lazily: only layers that run out of keyframes need it.
+    local timelineLength = nil
+
     for i = #rawLayers, 1, -1 do
         local layer = rawLayers[i]
         local layerName = layer[optimized and "LN" or "Layer_name"]
@@ -1023,7 +1026,17 @@ function AnimateAtlas:drawTimeline(timeline, frame, matrix, colorTransform)
             local lastKeyframe = keyframes[#keyframes]
             local lastKeyframeEnd = (lastKeyframe[optimized and "I" or "index"] or 0) + (lastKeyframe[optimized and "DU" or "duration"] or 0)
 
-            if frame >= lastKeyframeEnd then
+            if timelineLength == nil then
+                timelineLength = self:getTimelineLength(timeline)
+            end
+
+            -- Hold the last keyframe only for a layer that runs to the end of
+            -- the timeline and is overrun by a frame index past that end. A
+            -- layer that genuinely stops earlier than the timeline is empty
+            -- from then on in Animate, so it must not keep drawing: BF's miss
+            -- symbols put the default head/body/arm on frame 0 only and hand
+            -- over to the pre-rendered miss art on frame 1.
+            if frame >= lastKeyframeEnd and lastKeyframeEnd >= timelineLength then
                 local elements = lastKeyframe[optimized and "E" or "elements"]
                 if elements then
                     for i = 1, #elements do
@@ -1289,6 +1302,9 @@ function AnimateAtlas:_getTopLeft(self, timeline, frame, matrix, bounds)
     local timelineLayers = timeline[optimized and "L" or "LAYERS"]
     local foundSprites = false
 
+    -- Computed lazily: only layers that run out of keyframes need it.
+    local timelineLength = nil
+
     for i = #timelineLayers, 1, -1 do
         local layer = timelineLayers[i]
 		if layer[optimized and "LT" or "Layer_type"] then
@@ -1306,6 +1322,21 @@ function AnimateAtlas:_getTopLeft(self, timeline, frame, matrix, bounds)
 			if frame >= index and frame < index + duration then
 				activeKeyframe = kf
 				break
+			end
+		end
+
+		-- Same last-keyframe hold as drawTimeline, so bounds match what is drawn.
+		if not activeKeyframe and #keyframes > 0 then
+			local lastKeyframe = keyframes[#keyframes]
+			local lastKeyframeEnd = (lastKeyframe[optimized and "I" or "index"] or 0) +
+				(lastKeyframe[optimized and "DU" or "duration"] or 0)
+
+			if timelineLength == nil then
+				timelineLength = self:getTimelineLength(timeline)
+			end
+
+			if frame >= lastKeyframeEnd and lastKeyframeEnd >= timelineLength then
+				activeKeyframe = lastKeyframe
 			end
 		end
 

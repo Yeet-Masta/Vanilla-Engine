@@ -6,6 +6,10 @@ local lightningActive = true
 
 local rainTimeScale = 1
 
+local doPostShockHaptics = false
+local postShockCounter = 0
+local counterTargetNum = 10
+
 function Stage:onCreate()
     if love.system.getOS() ~= "NX" then
         shaders["rain"]:send("uScale", 0.0075)
@@ -82,7 +86,7 @@ function Stage:applyLightning()
     end
 
     local rnd = love.math.random(1, 3)
-    lightningSounds[rnd] = lightningSounds[rnd] or love.audio.newSource(EXTEND_LIBRARY_SFX("weekend1:/Lightning" .. rnd .. ".ogg"), "static")
+    lightningSounds[rnd] = lightningSounds[rnd] or love.audio.newSource(EXTEND_LIBRARY_SFX("weekend1:Lightning" .. rnd .. ".ogg"), "static")
     audio.playSound(lightningSounds[rnd])
 
     self:triggerLightningHaptics()
@@ -92,10 +96,6 @@ function Stage:triggerLightningHaptics()
     hapticUtil:vibrate(0, 0.05, 1)
     doPostShockHaptics = true
 end
-
-local doPostShockHaptics = false
-local postShockCounter = 0
-local counterTargetNum = 10
 
 function Stage:onStepHit(step)
     if doPostShockHaptics then
@@ -131,5 +131,12 @@ function Stage:initializeCamera()
 end
 
 function Stage:onSongRetry()
+    lightningActive = true
+    lightningTimer = 3
+    rainTimeScale = 1
+    doPostShockHaptics = false
+    postShockCounter = 0
+
+    self:cleanupLightning()
     self:initializeCamera()
 end

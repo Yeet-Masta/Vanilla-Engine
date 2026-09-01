@@ -4,8 +4,8 @@ function util.lerp(a, b, t)
     return a + (b - a) * t
 end
 
-function util.coolLerp(a, b, t)
-    return util.lerp(a, b, t * 60 * love.timer.getDelta())
+function util.coolLerp(a, b, t, dt)
+    return util.lerp(a, b, t * 60 * (dt or love.timer.getDelta()))
 end
 
 local function lerp2(base, target, prog)
@@ -19,7 +19,9 @@ function util.smoothLerp(current, target, elapsed, duration, precision)
     end
 
     local result = lerp2(current, target, 1 - math.pow(precision, elapsed / duration))
-    if math.abs(result - target) < (precision * target) then
+    -- Absolute epsilon: precision * target was negative for negative targets
+    -- and zero when target was 0, so it never converged.
+    if math.abs(result - target) < math.max(precision * math.abs(target), precision) then
         return target
     end
     return result

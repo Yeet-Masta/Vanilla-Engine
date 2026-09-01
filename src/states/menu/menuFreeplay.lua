@@ -263,7 +263,7 @@ return {
 
                         print("MOD: ", selectedWeek.mod)
                         poly:setPriority(allWeeks[weekNum].songs[songNum].diffs[songDifficulty].mod)
-                        Gamestate.switch(weeks, 1, dif.name, dif[2], dif[3], dif[4])
+                        Gamestate.switch(weeks, 1, dif.name, dif[2], dif[3], dif[4], selectedWeek.id)
 
                         status.setLoading(false)
                     end

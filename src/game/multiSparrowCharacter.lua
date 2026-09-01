@@ -145,8 +145,8 @@ function MultiSparrowCharacter:play(name, forced, loop)
         end
     end
 
-    self.sprite.x = self.x + self.offsets[1] - X_OFFSET_AMOUNT_FOR_SPITES - self.curAnimOffset[1]
-    self.sprite.y = self.y + self.offsets[2] - Y_OFFSET_AMOUNT_FOR_SPRITES - self.curAnimOffset[2]
+    self.sprite.x = self.x + self.offsets[1] - X_OFFSET_AMOUNT_FOR_SPITES - (self.curAnimOffset[1] * self.scale.x)
+    self.sprite.y = self.y + self.offsets[2] - Y_OFFSET_AMOUNT_FOR_SPRITES - (self.curAnimOffset[2] * self.scale.y)
 end
 
 

@@ -4,7 +4,7 @@ local rainShaderEndIntensity = 0
 
 local lightsStop = false
 local lastChange = 0
-local changeInterval = 0
+local changeInterval = 8
 
 local carWaiting = false
 local carInterruptable = true
@@ -13,7 +13,15 @@ local car2Interruptable = true
 local car1Tween, car2Tween
 local car1TweenAngle, car2TweenAngle
 
+local ScrollingSky = require("assets.scripts.props.scrollingSky")
 local scrollingSky
+
+-- Matches the original stage: a 2922x718 tiled region of the skybox, drifting
+-- left at 22px/s behind everything else.
+local SKY_REGION = {2922, 718}
+local SKY_POSITION = {-650, -375}
+local SKY_SCALE = 0.65
+local SKY_SCROLL_SPEED = 22
 
 local rainDropTimer = 0
 local rainDropWait = 6
@@ -38,14 +46,17 @@ function Stage:resetCar(left, right)
         carWaiting = false
         carInterruptable = true
         local cars = get("phillyCars")
-        if car1Tween then 
-            Timer.cancel(car1Tween)
-            cars.x = 1200
-            cars.y = 818
-            cars.angle = 0
+        if car1Tween then
+            car1Tween()
+            car1Tween = nil
         end
         if car1TweenAngle then
             Timer.cancel(car1TweenAngle)
+            car1TweenAngle = nil
+        end
+        if cars then
+            cars.x = 1200
+            cars.y = 818
             cars.angle = 0
         end
     end
@@ -54,13 +65,16 @@ function Stage:resetCar(left, right)
         car2Interruptable = true
         local cars2 = get("phillyCars2")
         if car2Tween then
-            Timer.cancel(car2Tween)
-            cars2.x = 1200
-            cars2.y = 818
-            cars2.angle = 0
+            car2Tween()
+            car2Tween = nil
         end
         if car2TweenAngle then
             Timer.cancel(car2TweenAngle)
+            car2TweenAngle = nil
+        end
+        if cars2 then
+            cars2.x = 1200
+            cars2.y = 818
             cars2.angle = 0
         end
     end
@@ -98,7 +112,18 @@ function Stage:onCreate()
 end
 
 function Stage:build()
-    -- scrolling sky shit
+    scrollingSky = ScrollingSky(EXTEND_LIBRARY("weekend1:phillyStreets/erect/phillySkybox"), SKY_REGION[1], SKY_REGION[2])
+    scrollingSky.name = "scrollingSky"
+    scrollingSky.x = SKY_POSITION[1]
+    scrollingSky.y = SKY_POSITION[2]
+    scrollingSky.scale.x = SKY_SCALE
+    scrollingSky.scale.y = SKY_SCALE
+    scrollingSky.scroll.x = 0.1
+    scrollingSky.scroll.y = 0.1
+    scrollingSky.scrollSpeed = SKY_SCROLL_SPEED
+    scrollingSky.zIndex = 10
+
+    add(scrollingSky)
 end
 
 local function randomFloat(min, max)
@@ -118,8 +143,12 @@ local function tweenQuadPath(sprite, path, duration, options)
     local stepDuration = duration / steps
     local stepIndex = 1
     local tweenHandle
+    local delayHandle
+    local cancelled = false
 
     local function doStep()
+        if cancelled then return end
+
         if stepIndex > steps then
             if onComplete then onComplete() end
             return
@@ -137,14 +166,20 @@ local function tweenQuadPath(sprite, path, duration, options)
     end
 
     if startDelay > 0 then
-        Timer.after(startDelay, doStep)
+        delayHandle = Timer.after(startDelay, doStep)
     else
         doStep()
     end
 
     return function()
+        cancelled = true
+        if delayHandle then
+            Timer.cancel(delayHandle)
+            delayHandle = nil
+        end
         if tweenHandle then
             Timer.cancel(tweenHandle)
+            tweenHandle = nil
         end
     end
 end
@@ -157,9 +192,9 @@ function Stage:finishCarLights(sprite)
     local startDelay = randomFloat(0.2, 1.2)
 
     local path = {
-        {x = 1950 - offset[0] - 70, y = 980 - offset[1] + 15},
-        {x = 2400 - offset[0], y = 980 - offset[1] - 50},
-        {x = 3102 - offset[0], y = 1187 - offset[1] + 40},
+        {x = 1950 - offset[1] - 70, y = 980 - offset[2] + 15},
+        {x = 2400 - offset[1], y = 980 - offset[2] - 50},
+        {x = 3102 - offset[1], y = 1187 - offset[2] + 40},
     }
 
     for i, point in ipairs(path) do
@@ -169,7 +204,7 @@ function Stage:finishCarLights(sprite)
 
     sprite.angle = math.rad(rotations[1])
     car1TweenAngle = Timer.tween(duration, sprite, {
-        angle = math.rad(rotations[rotations[2]])
+        angle = math.rad(rotations[2])
     }, "in-sine")
     car1Tween = tweenQuadPath(sprite, path, duration, {
         ease = "in-sine",
@@ -185,7 +220,7 @@ function Stage:driveCarLights(sprite)
     carInterruptable = false
 
     if car1Tween then
-        Timer.cancel(car1Tween)
+        car1Tween()
         car1Tween = nil
     end
     if car1TweenAngle then
@@ -250,7 +285,7 @@ function Stage:driveCar(sprite)
     carInterruptable = false
 
     if car1Tween then
-        Timer.cancel(car1Tween)
+        car1Tween()
         car1Tween = nil
     end
     if car1TweenAngle then
@@ -310,7 +345,7 @@ function Stage:driveCarBack(sprite)
     car2Interruptable = false
 
     if car2Tween then
-        Timer.cancel(car2Tween)
+        car2Tween()
         car2Tween = nil
     end
     if car2TweenAngle then
@@ -366,7 +401,7 @@ end
 
 function Stage:resetStageValues()
     lastChange = 0
-    changeInterval = 0
+    changeInterval = 8
     local traffic = get("phillyTraffic")
     if traffic then
         traffic:play("togreen", true, false)
@@ -432,6 +467,9 @@ end
 function Stage:addProp(prop, name)
     print(prop, name)
     if name:endsWith("_lightmap") then
+        -- Lightmaps are additive in the original stage; without the blend mode
+        -- they read as a flat grey wash instead of a glow.
+        prop.blendMode = "add"
         prop.alpha = 0.6
     elseif name == "puddle" then
         if love.system.getOS() ~= "NX" then

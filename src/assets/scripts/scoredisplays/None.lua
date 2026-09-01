@@ -1,3 +1,0 @@
-function Display:draw()
-
-end

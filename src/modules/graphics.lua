@@ -100,7 +100,9 @@ local graphics = {
 			if love.filesystem.getInfo(pathStr) then
 				graphics.cache[pathStr] = love.graphics.newImage(pathStr)
 			else
+				print("Could not find image file: " .. pathStr)
 				graphics.cache[pathStr] = love.graphics.newImage("images/missing.png")
+
 			end
 		end
 		local image, width, height
@@ -816,7 +818,12 @@ local graphics = {
 						ox = width + anim.offsetX + self.offsetX
 						oy = height + anim.offsetY + self.offsetY
 					else
-						ox = width + anim.offsetY + self.offsetY
+						-- The quad for a rotated frame is drawn spun -90deg (see the
+						-- orientation passed to love.graphics.draw below), so its
+						-- origin has to be expressed in the quad's own (pre-rotation)
+						-- axes: the crop width minus how far the canvas centre sits
+						-- from the crop's near edge, matching how the flip is undone.
+						ox = frameData[self.curFrame].width - width + anim.offsetY + self.offsetY
 						oy = height + anim.offsetX + self.offsetX
 					end
 
@@ -957,10 +964,10 @@ local graphics = {
 						ox = width + anim.offsetX + self.offsetX
 						oy = height + anim.offsetY + self.offsetY
 					else
-						ox = width + anim.offsetY + self.offsetY
+						ox = frameData[self.curFrame].width - width + anim.offsetY + self.offsetY
 						oy = height + anim.offsetX + self.offsetX
 					end
-					
+
 					local lastColor = {love.graphics.getColor()}
 					graphics.setColor(lastColor[1], lastColor[2], lastColor[3], lastColor[4] * self.alpha)
 

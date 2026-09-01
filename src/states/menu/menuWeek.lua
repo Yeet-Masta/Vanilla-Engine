@@ -111,6 +111,18 @@ return {
 		arrowDown.orientation = 1.5707963267949*3
 		arrowRight.orientation = 1.5707963267949*2
 
+		enemyDanceLines = love.filesystem.load("sprites/menu/idlelines.lua")()
+		bfDanceLines = love.filesystem.load("sprites/menu/idlelines.lua")()
+		gfDanceLines = love.filesystem.load("sprites/menu/idlelines.lua")()
+
+		enemyDanceLines.sizeX, enemyDanceLines.sizeY = 0.5, 0.5
+		bfDanceLines.sizeX, bfDanceLines.sizeY = 0.5, 0.5
+		gfDanceLines.sizeX, gfDanceLines.sizeY = 0.5, 0.5
+
+		bfDanceLines.x, bfDanceLines.y = 400, 0
+		gfDanceLines.x, gfDanceLines.y = 0, -20
+		enemyDanceLines.x, enemyDanceLines.y = -400, 0
+
 		difficultyAnim = love.filesystem.load("sprites/menu/difficulty.lua")()
 
 		difficultyAnim.x, difficultyAnim.y = 0, 240
@@ -124,6 +136,10 @@ return {
 		for i = 1, #weekImages do
 			weekImages[i].y = -270
 		end
+
+		bfDanceLines:animate("boyfriend", true)
+		gfDanceLines:animate("girlfriend", true)
+		enemyDanceLines:animate("week1", true)
 
 		graphics:fadeInWipe(0.6)
 
@@ -158,6 +174,14 @@ return {
 
 	update = function(self, dt)
 		function menuFunc()
+			if weekNum == 7 or weekNum == 8 then
+				enemyDanceLines.sizeX, enemyDanceLines.sizeY = 1, 1
+			elseif weekNum == 4 then
+				enemyDanceLines.sizeX = -0.5
+			else
+				enemyDanceLines.sizeX, enemyDanceLines.sizeY = 0.5, 0.5
+			end
+
 			theTracks = ""
 			for trackLength = 1, #(weekData[weekNum].songDisplayNames or {}) do
 				local song = weekData[weekNum].songDisplayNames[trackLength]
@@ -171,8 +195,17 @@ return {
 
 				::continue::
 			end
+
+			if enemyDanceLines:isAnimName("week" .. weekNum-1) then
+				enemyDanceLines:animate("week" .. weekNum-1, true)
+			else
+				enemyDanceLines:animate("none")
+			end
 		end
 
+		enemyDanceLines:update(dt)
+		bfDanceLines:update(dt)
+		gfDanceLines:update(dt)
 		arrowUp:update(dt)
 		arrowDown:update(dt)
 		arrowLeft:update(dt)
@@ -257,6 +290,7 @@ return {
 
 			elseif input:pressed("confirm") then
 				audio.playSound(confirmSound)
+				bfDanceLines:animate("boyfriend confirm", false)
 
 				confirmFunc()
 			elseif input:pressed("back") then
@@ -287,6 +321,11 @@ return {
 				love.graphics.setColor(1, 1, 1)
 
 				difficultyAnim:draw()
+				if weekNum ~= 1 and enemyDanceLines:isAnimName("week" .. weekNum-1) then
+					enemyDanceLines:draw()
+				end
+				bfDanceLines:draw()
+				gfDanceLines:draw()
 
 				--weekImages[currentWeek + 1]:draw()
 				love.graphics.setColor(freeColour[1]/255, freeColour[2]/255, freeColour[3]/255)
@@ -308,6 +347,9 @@ return {
 	end,
 
 	leave = function(self)
+		enemyDanceLines = nil
+		bfDanceLines = nil
+		gfDanceLines = nil
 		titleBG = nil
 		difficultyAnim = nil
 		Timer.clear()

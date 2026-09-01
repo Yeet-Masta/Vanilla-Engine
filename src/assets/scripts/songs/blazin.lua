@@ -1,33 +1,37 @@
 local hasHidden = false
-local hasPlayedCutscene = false
 
 function Song:onCreate()
-    self.hasHidden = false
-    self.hasPlayedCutscene = false
+    -- File-locals survive a retry, so they have to be cleared here or the
+    -- strumline layout is only applied on the very first attempt.
+    hasHidden = false
+end
+
+function Song:onSongRetry()
+    hasHidden = false
 end
 
 function Song:onUpdate(dt)
-    if not hasHidden then
-        hasHidden = true
-        self:hideOpponentStrumline()
-        self:centerPlayerStrumline()
+    if hasHidden then return end
+
+    local enemyPlayfield = weeks.enemyPlayfield
+    local boyfriendPlayfield = weeks.boyfriendPlayfield
+    if not enemyPlayfield or not boyfriendPlayfield then return end
+
+    self:hideOpponentStrumline(enemyPlayfield)
+    self:centerPlayerStrumline(boyfriendPlayfield)
+    hasHidden = true
+end
+
+function Song:hideOpponentStrumline(enemyPlayfield)
+    for i = 1, enemyPlayfield.laneCount do
+        enemyPlayfield.receptors[i].visible = false
     end
 end
 
-function Song:hideOpponentStrumline()
-    for i = 1, #enemyArrows do
-        enemyArrows[i].visible = false
-        for j = 1, #enemyNotes[i] do
-            enemyNotes[i][j].visible = false
-        end
-    end
-end
-
-function Song:centerPlayerStrumline()
-    for i = 1, #boyfriendArrows do
-        boyfriendArrows[i].x = -410 + 165 * i
-        for j = 1, #boyfriendNotes[i] do
-            boyfriendNotes[i][j].x = boyfriendArrows[i].x
-        end
-    end
+function Song:centerPlayerStrumline(boyfriendPlayfield)
+    -- Matches the -410 + 165*i absolute layout middlescroll used before the
+    -- playfield refactor, expressed as an offsetX against the new lane-relative
+    -- receptor.x (165*(i-1), STRUM_X_OFFSET 0): 165*(i-1) + offsetX == -410 + 165*i
+    -- solves to offsetX = -245.
+    boyfriendPlayfield.offsetX = -245
 end

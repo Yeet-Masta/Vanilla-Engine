@@ -39,12 +39,16 @@ function splash:new(settings, id)
 end
 
 function splash:update(dt)
-    for i, v in ipairs(self.cache) do
-        if not v then break end
-        v.sprite:update(dt)
+    -- Iterate backwards: removing while going forwards skipped every other
+    -- splash, leaving finished ones on screen.
+    for i = #self.cache, 1, -1 do
+        local v = self.cache[i]
+        if v then
+            v.sprite:update(dt)
 
-        if not v.sprite:isAnimated() then
-            table.remove(self.cache, i)
+            if not v.sprite:isAnimated() then
+                table.remove(self.cache, i)
+            end
         end
     end
 end
@@ -55,7 +59,6 @@ function splash:draw()
         graphics.setColor(1,1,1,0.5)
         v.sprite:draw()
         graphics.setColor(1,1,1,1)
-        ::continue::
     end
 end
 
@@ -65,7 +68,6 @@ function splash:udraw(sx, sy)
         graphics.setColor(1,1,1,0.5)
         v.sprite:udraw(sx, sy)
         graphics.setColor(1,1,1,1)
-        ::continue::
     end
 end
 

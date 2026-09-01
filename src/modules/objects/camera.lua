@@ -1,5 +1,6 @@
 local camera = {}
 local camTimer
+local flashTimer
 camera.x = 0
 camera.y = 0
 camera.shakeX = 0
@@ -20,7 +21,7 @@ camera.shakeTimer = nil
 camera.esizeX = 1
 camera.esizeY = 1
 
-camera.flash = 0
+camera.flashAmount = 0 -- numeric field; camera:flash() below is the method
 camera.col = {1, 1, 1}
 camera.points = {}
 
@@ -43,11 +44,12 @@ function camera:reset()
 end
 
 function camera:flash(time, x, col)
-    camera.color = col or {1, 1, 1}
-    if camTimer then 
-        Timer.cancel(camTimer)
+    camera.col = col or {1, 1, 1}
+    if flashTimer then
+        Timer.cancel(flashTimer)
     end
-    camTimer = Timer.tween(time, camera, {flash = x}, "in-bounce")
+    camera.flashAmount = x or 1
+    flashTimer = Timer.tween(time, camera, {flashAmount = 0}, "in-bounce")
 end
 
 function camera:shake(intensity, duration)
@@ -91,7 +93,7 @@ function camera:moveToPoint(time, name, mustHit)
     if camTimer then 
         Timer.cancel(camTimer)
     end
-    mustHit = mustHit or true 
+    if mustHit == nil then mustHit = true end
     camera.mustHit = mustHit
     camTimer = Timer.tween(time, camera, {x = camera.points[name].x, y = camera.points[name].y}, "out-quad")
 end

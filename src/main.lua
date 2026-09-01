@@ -70,6 +70,7 @@ function love.load()
 	Stage = require("game.stage")
 	Song = require("game.song")
 	Healthbar = require("game.healthbar")
+	scoring = require("game.scoring")
 	SparrowCharacter = require("game.sparrowCharacter")
 	PackerCharacter = require("game.packerCharacter")
 	MultiSparrowCharacter = require("game.multiSparrowCharacter")
@@ -445,7 +446,12 @@ function love.draw(dt) -- love.draw has its own delta time
 					love.graphics.rectangle("fill", 1113, 10, volumeWidth.width, 30)
 					graphics.setColor(1, 1, 1, 1)
 				end
-				if fade.mesh then 
+				if fade[1] < 1 then
+					love.graphics.setColor(0, 0, 0, 1 - fade[1])
+					love.graphics.rectangle("fill", 0, 0, push:getWidth(), push:getHeight())
+					graphics.setColor(1, 1, 1, 1)
+				end
+				if fade.mesh then
 					graphics.setColor(1,1,1)
 					love.graphics.draw(fade.mesh, 0, fade.y, 0, push:getWidth(), fade.height)
 				end
@@ -481,7 +487,12 @@ function love.draw(dt) -- love.draw has its own delta time
 				love.graphics.rectangle("fill", 1113, 10, volumeWidth.width, 30)
 				graphics.setColor(1, 1, 1, 1)
 			end
-			if fade.mesh then 
+			if fade[1] < 1 then
+				love.graphics.setColor(0, 0, 0, 1 - fade[1])
+				love.graphics.rectangle("fill", 0, 0, graphics.getWidth(), graphics.getHeight())
+				graphics.setColor(1, 1, 1, 1)
+			end
+			if fade.mesh then
 				graphics.setColor(1,1,1)
 				love.graphics.draw(fade.mesh, 0, fade.y, 0, graphics.getWidth(), fade.height)
 			end

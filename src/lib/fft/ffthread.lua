@@ -9,9 +9,9 @@ local function postprocess(x)
 end
 
 while true do
-    if inChannel:getCount() > 0 then
-        -- Get input
-        local toFFT = inChannel:pop()
+    -- demand() blocks until work arrives; the old getCount() spin pegged a core.
+    local toFFT = inChannel:demand()
+    if toFFT then
         -- Perform FFT
         local res = {}
         util.tryExcept(

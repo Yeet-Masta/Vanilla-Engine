@@ -2,7 +2,7 @@ return {
     imagePath = function(path)
         return graphics.imagePath("icons/icon-" .. (path or "bf"))
     end,
-    newIcon = function(path, scale, dontCalculateColour)
+    newIcon = function(path, scale, dontCalculateColour, isPixel)
         if not graphics.cache[path .. "imgdata"] then
             local newPath = path:gsub("/dds/", "/png/")
             newPath = newPath:gsub(".dds$", ".png")
@@ -16,7 +16,11 @@ return {
         end
         local imgdata = graphics.cache[path .. "imgdata"]
         local img = graphics.cache[path]
-        if path:find("pixel") then
+        -- The healthIcon.isPixel flag from the character's data is the source
+        -- of truth (icon ids like "senpai"/"spirit" are pixel icons but don't
+        -- contain "pixel" in their filename, unlike "bf-pixel") -- fall back
+        -- to the filename check for direct callers that don't pass it.
+        if isPixel or path:find("pixel") then
             img:setFilter("nearest")
         end
         local frameData = {

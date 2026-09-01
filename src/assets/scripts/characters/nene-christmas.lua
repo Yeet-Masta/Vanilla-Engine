@@ -132,7 +132,7 @@ function Character:onUpdate(dt)
 
         stereoBG.x = abot.x + 150
         stereoBG.y = abot.y + 30
-        stereoBG.zIndex = eyeWhites.zIndex - 8
+        stereoBG.zIndex = abot.zIndex - 8
         weeks:add(stereoBG)
 
         weeks:sort()
@@ -178,14 +178,14 @@ end
 
 function Character:transitionState()
     if state == STATE_DEFAULT then
-        if health <= VULTURE_THRESHOLD then
+        if weeks:getHealth() <= VULTURE_THRESHOLD then
             state = STATE_PRE_RAISE
         else
             state = STATE_DEFAULT
         end
         self:checkTrainPassing()
     elseif state == STATE_PRE_RAISE then
-        if health > VULTURE_THRESHOLD then
+        if weeks:getHealth() > VULTURE_THRESHOLD then
             state = STATE_DEFAULT
         elseif animationFinished then
             state = STATE_RAISE
@@ -200,7 +200,7 @@ function Character:transitionState()
         end
         self:checkTrainPassing(true)
     elseif state == STATE_READY then
-        if health > VULTURE_THRESHOLD then
+        if weeks:getHealth() > VULTURE_THRESHOLD then
             state = STATE_LOWER
         end
         self:checkTrainPassing(true)

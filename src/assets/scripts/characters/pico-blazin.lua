@@ -10,7 +10,14 @@ local cantUppercut = false
 
 function Character:onNoteHit(event)
     self.data.holdTimer = 0
-    if not event.noteType:startsWith("weekend-1-") then return end
+
+    -- Darnell landing one of his own notes is Pico taking the hit, so it runs
+    -- through the miss reactions rather than the hit ones.
+    if event.mustHit == false then
+        return self:onNoteMiss(event)
+    end
+
+    if not event.noteType or not event.noteType:startsWith("weekend-1-") then return end
 
     local shouldDoUppercutPrep = self:wasNoteHitPoorly(event) and self:isPlayerLowHealth() and self:isDarnellPreppingUppercut()
 
@@ -148,15 +155,16 @@ function Character:onNoteMiss(event)
 end
 
 function Character:willMissBeLethal(event)
-    return weeks:getHealth() - event.healthChange <= 0
+    return weeks:getHealth() + (event.healthChange or 0) <= 0
 end
 
 function Character:onNoteGhostMiss(event)
-    -- gotta implement this first
     if self:willMissBeLethal(event) then
+        -- Darnell throws the punch that finishes Pico off.
         self:playHitLowAnim()
     else
-        self:playHitHighAnim()
+        -- Pico throws wild punches, Darnell just dodges them.
+        self:playPunchHighAnim()
     end
 end
 
@@ -169,25 +177,36 @@ function Character:onSongRetry()
 end
 
 function Character:getDarnell()
-    return weeks:getCharacter("enemy")
+    return weeks.enemy
 end
 
 function Character:moveToBack()
+    local darnell = self:getDarnell()
     self.data.zIndex = 2000
+    if darnell then darnell.zIndex = 3000 end
     weeks:sort()
 end
 
 function Character:moveToFront()
+    local darnell = self:getDarnell()
     self.data.zIndex = 3000
+    if darnell then darnell.zIndex = 2000 end
     weeks:sort()
 end
 
+function Character:getDarnellAnim()
+    local darnell = self:getDarnell()
+    local curAnim = darnell and darnell.sprite and darnell.sprite.curAnim
+    return curAnim and curAnim.name or ""
+end
+
 function Character:isDarnellPreppingUppercut()
-    return self:getDarnell().sprite.curAnim == "uppercutPrep"
+    return self:getDarnellAnim() == "uppercutPrep"
 end
 
 function Character:isDarnellInUppercut()
-    return self:getDarnell().sprite.curAnim == "uppercut" or self:getDarnell().sprite.curAnim == "uppercut-hold"
+    local anim = self:getDarnellAnim()
+    return anim == "uppercut" or anim == "uppercut-hold"
 end
 
 function Character:wasNoteHitPoorly(event)
@@ -263,7 +282,7 @@ function Character:playHitLowAnim()
 end
 
 function Character:playHitSpinAnim()
-    self.data:play("hitSpin", true, false, true)
+    self.data:play("hitSpin", true, false)
     weeks:getCamera():shake(0.0025, 0.15)
     self:moveToBack()
 end
@@ -281,7 +300,8 @@ function Character:playPunchLowAnim()
 end
 
 function Character:playTauntConditionalAnim()
-    if self.data.sprite.curAnim == "fakeout" then
+    local curAnim = self.data.sprite.curAnim
+    if curAnim and curAnim.name == "fakeout" then
         self:playTauntAnim()
     else
         self:playIdleAnim()

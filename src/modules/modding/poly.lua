@@ -137,6 +137,16 @@ function love.audio.newSource(file, type)
     return newsource(resolveAsset(file), type)
 end
 
+-- sound
+local newSoundData = love.sound.newSoundData
+function love.sound.newSoundData(fileordata, ...)
+    if type(fileordata) == "string" then
+        return newSoundData(resolveAsset(fileordata), ...)
+    end
+
+    return newSoundData(fileordata, ...)
+end
+
 -- graphics
 local newfont = love.graphics.newFont
 function love.graphics.newFont(file, size)
